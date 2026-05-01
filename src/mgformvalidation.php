@@ -94,28 +94,28 @@ class mgformvalidation
     private function required(string $field, string $value): void
     {
         if ($value === '') {
-            $this->errors[$field] = 'O campo ' . $field . ' é obrigatório.';
+            $this->errors[$field] = 'O campo é obrigatório.';
         }
     }
 
     public function email(string $field, string $value): void
     {
         if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            $this->errors[$field] = 'O campo ' . $field . ' deve ser um e-mail válido.';
+            $this->errors[$field] = 'O campo deve ter um e-mail válido.';
         }
     }
 
     public function min(string $field, string $value, int $min): void
     {
         if ($value !== '' && mb_strlen($value) < $min) {
-            $this->errors[$field] = 'O campo ' . $field . ' deve ter no mínimo ' . $min . ' caracteres.';
+            $this->errors[$field] = 'O campo deve ter no mínimo ' . $min . ' caracteres.';
         }
     }
 
     public function max(string $field, string $value, int $max): void
     {
         if ($value !== '' && mb_strlen($value) > $max) {
-            $this->errors[$field] = 'O campo ' . $field . ' deve ter no máximo ' . $max . ' caracteres';
+            $this->errors[$field] = 'O campo deve ter no máximo ' . $max . ' caracteres';
         }
     }
 
