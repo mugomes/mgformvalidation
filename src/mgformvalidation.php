@@ -15,12 +15,12 @@ class mgformvalidation
     public const METHOD_POST = 'POST';
     public const METHOD_GET = 'GET';
 
-    public function __construct(string|array $data = 'POST')
+    public function __construct(string|array $data = self::METHOD_POST)
     {
         if (is_array($data)) {
             $this->data = $data;
         } else {
-            $this->data = ($data == 'POST') ? $_POST : $_GET;
+            $this->data = ($data == 'POST') ? filter_input_array(INPUT_POST) : filter_input_array(INPUT_GET);
         }
     }
 
