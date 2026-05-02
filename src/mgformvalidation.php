@@ -1,7 +1,7 @@
 <?php
 // Copyright (C) 2026 Murilo Gomes Julio
 // SPDX-License-Identifier: LGPL-2.1-only
-
+//
 // Site: https://mugomes.github.io
 
 namespace MGFormValidation;
@@ -20,19 +20,20 @@ class mgformvalidation
         if (is_array($data)) {
             $this->data = $data;
         } else {
-            $this->data = ($data == 'POST') ? filter_input_array(INPUT_POST) : filter_input_array(INPUT_GET);
+            $this->data = ($data === self::METHOD_POST) ? $_POST : $_GET;
         }
     }
 
-    public static function form(string $method, string $action, string $id = '', string $name = '')
+    public static function form(string $method, string $action, string $id = '', string $name = ''): string
     {
         $txt = '<form ';
+
         if (!empty($id)) {
-            $txt .= ' id="' . $id . '" ';
+            $txt .= 'id="' . $id . '" ';
         }
 
         if (!empty($name)) {
-            $txt .= ' name="' . $name . '" ';
+            $txt .= 'name="' . $name . '" ';
         }
 
         $txt .= 'method="' . $method . '" action="' . $action . '" data-mgformvalidation>';
@@ -40,7 +41,7 @@ class mgformvalidation
         return $txt;
     }
 
-    public static function dataError(string $classname, string $field)
+    public static function dataError(string $classname, string $field): string
     {
         return sprintf('<div class="%s" data-error="%s"></div>', $classname, $field);
     }
@@ -50,7 +51,7 @@ class mgformvalidation
         return sprintf('<div class="%s" data-success></div>', $classname);
     }
 
-    public static function endForm()
+    public static function endForm(): string
     {
         return '</form>';
     }
@@ -63,13 +64,16 @@ class mgformvalidation
 
     public function validate(): bool
     {
+        $this->errors = [];
+
         foreach ($this->rules as $field => $rules) {
             $value = trim((string) ($this->data[$field] ?? ''));
             $ruleList = explode('|', $rules);
 
             foreach ($ruleList as $rule) {
                 $this->applyRule($field, $value, $rule);
-                if (isset($this->error[$field])) {
+
+                if (isset($this->errors[$field])) {
                     break;
                 }
             }
@@ -80,14 +84,15 @@ class mgformvalidation
 
     private function applyRule(string $field, string $value, string $rule): void
     {
-        [$ruleName, $param] = array_pad(explode(':', $rule), 2, null);
+        $parts = explode(':', $rule);
+        $ruleName = $parts[0] ?? null;
 
         match ($ruleName) {
             'required' => $this->required($field, $value),
-            'email' => $this->email($field, $value),
-            'min' => $this->min($field, $value, (int) $param),
-            'max' => $this->max($field, $value, (int) $param),
-            default => null
+            'email'    => $this->email($field, $value),
+            'min'      => $this->min($field, $value, (int) ($parts[1] ?? 0)),
+            'max'      => $this->max($field, $value, (int) ($parts[1] ?? 0)),
+            default    => null
         };
     }
 
@@ -98,24 +103,24 @@ class mgformvalidation
         }
     }
 
-    public function email(string $field, string $value): void
+    private function email(string $field, string $value): void
     {
         if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-            $this->errors[$field] = 'O campo deve ter um e-mail válido.';
+            $this->errors[$field] = 'O campo deve ser um e-mail válido.';
         }
     }
 
-    public function min(string $field, string $value, int $min): void
+    private function min(string $field, string $value, int $min): void
     {
         if ($value !== '' && mb_strlen($value) < $min) {
             $this->errors[$field] = 'O campo deve ter no mínimo ' . $min . ' caracteres.';
         }
     }
 
-    public function max(string $field, string $value, int $max): void
+    private function max(string $field, string $value, int $max): void
     {
         if ($value !== '' && mb_strlen($value) > $max) {
-            $this->errors[$field] = 'O campo deve ter no máximo ' . $max . ' caracteres';
+            $this->errors[$field] = 'O campo deve ter no máximo ' . $max . ' caracteres.';
         }
     }
 
@@ -126,7 +131,8 @@ class mgformvalidation
 
     public function check(string $field): void
     {
-        header('Content-Type: application/json;charset=utf-8');
+        header('Content-Type: application/json; charset=utf-8');
+
         $rules = [$field => $this->rules[$field] ?? ''];
 
         $validator = new self($this->data);
@@ -134,7 +140,7 @@ class mgformvalidation
 
         if (!$validator->validate()) {
             echo json_encode([
-                'fields' => $field,
+                'field' => $field,
                 'error' => $validator->errors()[$field] ?? null
             ], JSON_UNESCAPED_UNICODE);
             exit;
@@ -156,24 +162,27 @@ class mgformvalidation
         }
 
         if (!$this->validate()) {
-            echo json_encode(['errors' => $this->errors(), JSON_UNESCAPED_UNICODE]);
+            echo json_encode([
+                'errors' => $this->errors()
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
     }
 
-    public function success($function)
+    public function success(callable $function): void
     {
         $function();
         exit;
     }
 
-    public static function scripts()
+    public static function scripts(): string
     {
         return <<<HTML
         <script>
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('form[data-mgformvalidation]').forEach(function (form) {
                 const timers = {};
+
                 async function validateField(field) {
                     const errorEl = form.querySelector('[data-error="' + field.name + '"]');
                     if (!errorEl) return;
@@ -202,7 +211,7 @@ class mgformvalidation
                     const mode = field.getAttribute('mgformvalidation-live') || 'input';
 
                     field.addEventListener(mode, function () {
-                        clearTimeout(timers[field.name])
+                        clearTimeout(timers[field.name]);
 
                         timers[field.name] = setTimeout(function () {
                             validateField(field);
@@ -224,7 +233,7 @@ class mgformvalidation
 
                     const success = form.querySelector('[data-success]');
                     if (success) success.innerText = '';
-                    
+
                     try {
                         const response = await fetch(form.action || window.location.href, {
                             method: form.method,
